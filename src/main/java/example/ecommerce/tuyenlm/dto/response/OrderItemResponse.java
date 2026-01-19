@@ -1,4 +1,4 @@
-package example.ecommerce.tuyenlm.dto;
+package example.ecommerce.tuyenlm.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,13 +11,12 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class VariantResponse {
+public class OrderItemResponse {
     private Long id;
+    private String name;
     private String sku;
-    private String size;
-    private String color;
+    private int quantity;
     private BigDecimal price;
-    private int stockQuantity;
-    private int availableStock; // After deducting active reservations
-    private boolean active;
+    private BigDecimal subtotal;
 }
+

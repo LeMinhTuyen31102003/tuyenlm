@@ -1,4 +1,4 @@
-package example.ecommerce.tuyenlm.dto;
+package example.ecommerce.tuyenlm.dto.request;
 
 import example.ecommerce.tuyenlm.entity.OrderStatus;
 import jakarta.validation.constraints.NotNull;

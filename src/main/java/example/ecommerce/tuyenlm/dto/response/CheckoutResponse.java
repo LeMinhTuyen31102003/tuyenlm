@@ -1,4 +1,4 @@
-package example.ecommerce.tuyenlm.dto;
+package example.ecommerce.tuyenlm.dto.response;
 
 import example.ecommerce.tuyenlm.entity.OrderStatus;
 import lombok.AllArgsConstructor;
@@ -22,3 +22,4 @@ public class CheckoutResponse {
     private OrderStatus status;
     private LocalDateTime reservationExpiresAt;
 }
+

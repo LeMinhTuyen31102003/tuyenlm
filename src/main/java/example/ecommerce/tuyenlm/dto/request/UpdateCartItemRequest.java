@@ -1,4 +1,4 @@
-package example.ecommerce.tuyenlm.dto;
+package example.ecommerce.tuyenlm.dto.request;
 
 import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;

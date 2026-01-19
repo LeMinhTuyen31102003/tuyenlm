@@ -1,6 +1,6 @@
 package example.ecommerce.tuyenlm.exception;
 
-import example.ecommerce.tuyenlm.dto.ErrorResponse;
+import example.ecommerce.tuyenlm.dto.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -18,143 +18,143 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleResourceNotFound(
-            ResourceNotFoundException ex,
-            HttpServletRequest request) {
+        @ExceptionHandler(ResourceNotFoundException.class)
+        public ResponseEntity<ErrorResponse> handleResourceNotFound(
+                        ResourceNotFoundException ex,
+                        HttpServletRequest request) {
 
-        log.error("Resource not found: {}", ex.getMessage());
+                log.error("Resource not found: {}", ex.getMessage());
 
-        ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.NOT_FOUND.value())
-                .error("Not Found")
-                .message(ex.getMessage())
-                .path(request.getRequestURI())
-                .build();
+                ErrorResponse error = ErrorResponse.builder()
+                                .timestamp(LocalDateTime.now())
+                                .status(HttpStatus.NOT_FOUND.value())
+                                .error("Not Found")
+                                .message(ex.getMessage())
+                                .path(request.getRequestURI())
+                                .build();
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-    }
-
-    @ExceptionHandler(InsufficientStockException.class)
-    public ResponseEntity<ErrorResponse> handleInsufficientStock(
-            InsufficientStockException ex,
-            HttpServletRequest request) {
-
-        log.error("Insufficient stock: {}", ex.getMessage());
-
-        Map<String, String> details = new HashMap<>();
-        if (ex.getDetails() != null) {
-            ex.getDetails().forEach((key, value) -> details.put(key, String.valueOf(value)));
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
         }
 
-        ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.CONFLICT.value())
-                .error("Conflict")
-                .message(ex.getMessage())
-                .path(request.getRequestURI())
-                .details(details)
-                .build();
+        @ExceptionHandler(InsufficientStockException.class)
+        public ResponseEntity<ErrorResponse> handleInsufficientStock(
+                        InsufficientStockException ex,
+                        HttpServletRequest request) {
 
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
-    }
+                log.error("Insufficient stock: {}", ex.getMessage());
 
-    @ExceptionHandler(EmptyCartException.class)
-    public ResponseEntity<ErrorResponse> handleEmptyCart(
-            EmptyCartException ex,
-            HttpServletRequest request) {
+                Map<String, String> details = new HashMap<>();
+                if (ex.getDetails() != null) {
+                        ex.getDetails().forEach((key, value) -> details.put(key, String.valueOf(value)));
+                }
 
-        log.error("Empty cart: {}", ex.getMessage());
+                ErrorResponse error = ErrorResponse.builder()
+                                .timestamp(LocalDateTime.now())
+                                .status(HttpStatus.CONFLICT.value())
+                                .error("Conflict")
+                                .message(ex.getMessage())
+                                .path(request.getRequestURI())
+                                .details(details)
+                                .build();
 
-        ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Bad Request")
-                .message(ex.getMessage())
-                .path(request.getRequestURI())
-                .build();
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        }
 
-        return ResponseEntity.badRequest().body(error);
-    }
+        @ExceptionHandler(EmptyCartException.class)
+        public ResponseEntity<ErrorResponse> handleEmptyCart(
+                        EmptyCartException ex,
+                        HttpServletRequest request) {
 
-    @ExceptionHandler(InvalidOrderStatusTransitionException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidStatusTransition(
-            InvalidOrderStatusTransitionException ex,
-            HttpServletRequest request) {
+                log.error("Empty cart: {}", ex.getMessage());
 
-        log.error("Invalid order status transition: {}", ex.getMessage());
+                ErrorResponse error = ErrorResponse.builder()
+                                .timestamp(LocalDateTime.now())
+                                .status(HttpStatus.BAD_REQUEST.value())
+                                .error("Bad Request")
+                                .message(ex.getMessage())
+                                .path(request.getRequestURI())
+                                .build();
 
-        ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Bad Request")
-                .message(ex.getMessage())
-                .path(request.getRequestURI())
-                .build();
+                return ResponseEntity.badRequest().body(error);
+        }
 
-        return ResponseEntity.badRequest().body(error);
-    }
+        @ExceptionHandler(InvalidOrderStatusTransitionException.class)
+        public ResponseEntity<ErrorResponse> handleInvalidStatusTransition(
+                        InvalidOrderStatusTransitionException ex,
+                        HttpServletRequest request) {
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationErrors(
-            MethodArgumentNotValidException ex,
-            HttpServletRequest request) {
+                log.error("Invalid order status transition: {}", ex.getMessage());
 
-        log.error("Validation failed: {}", ex.getMessage());
+                ErrorResponse error = ErrorResponse.builder()
+                                .timestamp(LocalDateTime.now())
+                                .status(HttpStatus.BAD_REQUEST.value())
+                                .error("Bad Request")
+                                .message(ex.getMessage())
+                                .path(request.getRequestURI())
+                                .build();
 
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
+                return ResponseEntity.badRequest().body(error);
+        }
 
-        ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Validation Failed")
-                .message("Invalid request parameters")
-                .path(request.getRequestURI())
-                .details(errors)
-                .build();
+        @ExceptionHandler(MethodArgumentNotValidException.class)
+        public ResponseEntity<ErrorResponse> handleValidationErrors(
+                        MethodArgumentNotValidException ex,
+                        HttpServletRequest request) {
 
-        return ResponseEntity.badRequest().body(error);
-    }
+                log.error("Validation failed: {}", ex.getMessage());
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalArgument(
-            IllegalArgumentException ex,
-            HttpServletRequest request) {
+                Map<String, String> errors = new HashMap<>();
+                ex.getBindingResult().getAllErrors().forEach((error) -> {
+                        String fieldName = ((FieldError) error).getField();
+                        String errorMessage = error.getDefaultMessage();
+                        errors.put(fieldName, errorMessage);
+                });
 
-        log.error("Illegal argument: {}", ex.getMessage());
+                ErrorResponse error = ErrorResponse.builder()
+                                .timestamp(LocalDateTime.now())
+                                .status(HttpStatus.BAD_REQUEST.value())
+                                .error("Validation Failed")
+                                .message("Invalid request parameters")
+                                .path(request.getRequestURI())
+                                .details(errors)
+                                .build();
 
-        ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Bad Request")
-                .message(ex.getMessage())
-                .path(request.getRequestURI())
-                .build();
+                return ResponseEntity.badRequest().body(error);
+        }
 
-        return ResponseEntity.badRequest().body(error);
-    }
+        @ExceptionHandler(IllegalArgumentException.class)
+        public ResponseEntity<ErrorResponse> handleIllegalArgument(
+                        IllegalArgumentException ex,
+                        HttpServletRequest request) {
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(
-            Exception ex,
-            HttpServletRequest request) {
+                log.error("Illegal argument: {}", ex.getMessage());
 
-        log.error("Unexpected error: ", ex);
+                ErrorResponse error = ErrorResponse.builder()
+                                .timestamp(LocalDateTime.now())
+                                .status(HttpStatus.BAD_REQUEST.value())
+                                .error("Bad Request")
+                                .message(ex.getMessage())
+                                .path(request.getRequestURI())
+                                .build();
 
-        ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .error("Internal Server Error")
-                .message("An unexpected error occurred")
-                .path(request.getRequestURI())
-                .build();
+                return ResponseEntity.badRequest().body(error);
+        }
 
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-    }
+        @ExceptionHandler(Exception.class)
+        public ResponseEntity<ErrorResponse> handleGenericException(
+                        Exception ex,
+                        HttpServletRequest request) {
+
+                log.error("Unexpected error: ", ex);
+
+                ErrorResponse error = ErrorResponse.builder()
+                                .timestamp(LocalDateTime.now())
+                                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                                .error("Internal Server Error")
+                                .message("An unexpected error occurred")
+                                .path(request.getRequestURI())
+                                .build();
+
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
 }

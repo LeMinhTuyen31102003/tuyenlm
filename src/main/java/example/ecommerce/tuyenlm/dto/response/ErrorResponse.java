@@ -1,4 +1,4 @@
-package example.ecommerce.tuyenlm.dto;
+package example.ecommerce.tuyenlm.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,3 +20,4 @@ public class ErrorResponse {
     private String path;
     private Map<String, String> details;
 }
+

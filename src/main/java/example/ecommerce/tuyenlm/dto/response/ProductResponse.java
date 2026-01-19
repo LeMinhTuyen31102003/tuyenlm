@@ -1,4 +1,4 @@
-package example.ecommerce.tuyenlm.dto;
+package example.ecommerce.tuyenlm.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,3 +22,4 @@ public class ProductResponse {
     private List<VariantResponse> variants;
     private LocalDateTime createdAt;
 }
+

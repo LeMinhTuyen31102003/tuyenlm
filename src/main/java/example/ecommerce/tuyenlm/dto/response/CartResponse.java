@@ -1,4 +1,4 @@
-package example.ecommerce.tuyenlm.dto;
+package example.ecommerce.tuyenlm.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,3 +19,4 @@ public class CartResponse {
     private int totalItems;
     private BigDecimal totalAmount;
 }
+
