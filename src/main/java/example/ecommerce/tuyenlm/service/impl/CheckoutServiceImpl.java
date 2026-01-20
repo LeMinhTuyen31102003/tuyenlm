@@ -3,6 +3,8 @@ package example.ecommerce.tuyenlm.service.impl;
 import example.ecommerce.tuyenlm.dto.request.CheckoutRequest;
 import example.ecommerce.tuyenlm.dto.response.CheckoutResponse;
 import example.ecommerce.tuyenlm.entity.*;
+import example.ecommerce.tuyenlm.enums.OrderStatus;
+import example.ecommerce.tuyenlm.enums.ReservationStatus;
 import example.ecommerce.tuyenlm.exception.EmptyCartException;
 import example.ecommerce.tuyenlm.exception.InsufficientStockException;
 import example.ecommerce.tuyenlm.exception.ResourceNotFoundException;
@@ -10,6 +12,7 @@ import example.ecommerce.tuyenlm.repository.*;
 import example.ecommerce.tuyenlm.service.inter.ICheckoutService;
 import example.ecommerce.tuyenlm.service.inter.IEmailService;
 import example.ecommerce.tuyenlm.service.inter.IInventoryReservationService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +41,7 @@ public class CheckoutServiceImpl implements ICheckoutService {
     private final InventoryReservationRepository reservationRepository;
     private final IInventoryReservationService reservationService;
     private final IEmailService emailService;
+    private final EntityManager entityManager;
 
     @Value("${app.frontend.url:http://localhost:8080}")
     private String frontendUrl;
@@ -135,7 +139,18 @@ public class CheckoutServiceImpl implements ICheckoutService {
 
         // 7. Send order confirmation email
         try {
-            emailService.sendOrderConfirmationEmail(order);
+            // Flush to persist all changes to database before reloading
+            entityManager.flush();
+            // Clear persistence context to force fresh load from DB
+            entityManager.clear();
+
+            // Reload order with items (JOIN FETCH to avoid lazy loading)
+            Order orderWithItems = orderRepository.findByIdWithItems(order.getId())
+                    .orElse(order);
+            log.info("Loaded order {} with {} items for email",
+                    orderWithItems.getOrderNumber(),
+                    orderWithItems.getItems() != null ? orderWithItems.getItems().size() : 0);
+            emailService.sendOrderConfirmationEmail(orderWithItems);
             log.info("Order confirmation email sent for order: {}", order.getOrderNumber());
         } catch (Exception e) {
             log.error("Failed to send order confirmation email for order: {}", order.getOrderNumber(), e);

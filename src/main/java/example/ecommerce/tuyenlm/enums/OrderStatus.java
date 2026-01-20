@@ -1,4 +1,4 @@
-package example.ecommerce.tuyenlm.entity;
+package example.ecommerce.tuyenlm.enums;
 
 public enum OrderStatus {
     PENDING, // Đơn hàng mới tạo, chưa thanh toán

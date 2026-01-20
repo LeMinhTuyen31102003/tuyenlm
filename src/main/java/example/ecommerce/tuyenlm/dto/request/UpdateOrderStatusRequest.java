@@ -1,6 +1,6 @@
 package example.ecommerce.tuyenlm.dto.request;
 
-import example.ecommerce.tuyenlm.entity.OrderStatus;
+import example.ecommerce.tuyenlm.enums.OrderStatus;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AddCartItemRequest {
 
-    @NotNull(message = "Session ID is required")
+    // ✅ OPTIONAL - Server sẽ tự tạo nếu không có
     private String sessionId;
 
     @NotNull(message = "Variant ID is required")

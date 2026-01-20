@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class CartItemResponse {
     private Long id;
+    private String sessionId; // ✅ Backend tự quản lý và trả về sessionId
     private VariantResponse variant;
     private int quantity;
     private BigDecimal priceSnapshot;

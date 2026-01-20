@@ -18,6 +18,7 @@ public interface CartMapper {
     CartResponse toCartResponse(Cart cart);
 
     // CartItem → CartItemResponse
+    @Mapping(target = "sessionId", ignore = true) // Set manually in service
     @Mapping(target = "variant", source = "variant")
     @Mapping(target = "subtotal", expression = "java(cartItem.getSubtotal())")
     CartItemResponse toCartItemResponse(CartItem cartItem);

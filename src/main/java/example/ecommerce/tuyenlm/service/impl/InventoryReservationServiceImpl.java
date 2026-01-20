@@ -3,7 +3,7 @@ package example.ecommerce.tuyenlm.service.impl;
 import example.ecommerce.tuyenlm.entity.InventoryReservation;
 import example.ecommerce.tuyenlm.entity.Order;
 import example.ecommerce.tuyenlm.entity.ProductVariant;
-import example.ecommerce.tuyenlm.entity.ReservationStatus;
+import example.ecommerce.tuyenlm.enums.ReservationStatus;
 import example.ecommerce.tuyenlm.repository.InventoryReservationRepository;
 import example.ecommerce.tuyenlm.repository.ProductVariantRepository;
 import example.ecommerce.tuyenlm.service.inter.IInventoryReservationService;

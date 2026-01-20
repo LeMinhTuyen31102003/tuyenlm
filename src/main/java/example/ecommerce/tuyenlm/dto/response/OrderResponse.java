@@ -1,7 +1,7 @@
 package example.ecommerce.tuyenlm.dto.response;
 
-import example.ecommerce.tuyenlm.entity.OrderStatus;
-import example.ecommerce.tuyenlm.entity.PaymentMethod;
+import example.ecommerce.tuyenlm.enums.OrderStatus;
+import example.ecommerce.tuyenlm.enums.PaymentMethod;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -31,4 +31,3 @@ public class OrderResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
-

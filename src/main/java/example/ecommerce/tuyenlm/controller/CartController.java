@@ -40,8 +40,10 @@ public class CartController {
     }
 
     @DeleteMapping("/items/{itemId}")
-    public ResponseEntity<Void> removeCartItem(@PathVariable Long itemId) {
-        cartService.removeCartItem(itemId);
+    public ResponseEntity<Void> removeCartItem(
+            @PathVariable Long itemId,
+            @RequestParam String sessionId) {
+        cartService.removeCartItem(itemId, sessionId);
         return ResponseEntity.noContent().build();
     }
 

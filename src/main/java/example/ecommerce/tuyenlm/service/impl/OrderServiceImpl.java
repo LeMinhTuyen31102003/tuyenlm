@@ -2,6 +2,7 @@ package example.ecommerce.tuyenlm.service.impl;
 
 import example.ecommerce.tuyenlm.dto.response.OrderResponse;
 import example.ecommerce.tuyenlm.entity.*;
+import example.ecommerce.tuyenlm.enums.OrderStatus;
 import example.ecommerce.tuyenlm.exception.InvalidOrderStatusTransitionException;
 import example.ecommerce.tuyenlm.exception.ResourceNotFoundException;
 import example.ecommerce.tuyenlm.mapping.OrderMapper;
@@ -81,13 +82,6 @@ public class OrderServiceImpl implements IOrderService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public Page<OrderResponse> getOrdersByEmail(String email, Pageable pageable) {
-        Page<Order> orders = orderRepository.findByCustomerEmail(email, pageable);
-        return orders.map(orderMapper::toOrderResponse);
-    }
-
-    @Override
     @Transactional
     public OrderResponse updateOrderStatus(Long orderId, OrderStatus newStatus, String note) {
         Order order = orderRepository.findById(orderId)
@@ -121,12 +115,16 @@ public class OrderServiceImpl implements IOrderService {
 
         order.setStatus(newStatus);
         order = orderRepository.save(order);
+
         // Send status update email
+        log.info("Attempting to send status update email for order: {} - new status: {}",
+                order.getOrderNumber(), newStatus);
         try {
             emailService.sendOrderStatusUpdateEmail(order);
-            log.info("Status update email sent for order: {} - status: {}", order.getOrderNumber(), newStatus);
+            log.info("Successfully sent status update email for order: {}", order.getOrderNumber());
         } catch (Exception e) {
-            log.error("Failed to send status update email for order: {}", order.getOrderNumber(), e);
+            log.error("FAILED to send status update email for order: {} - Error: {}",
+                    order.getOrderNumber(), e.getMessage(), e);
             // Don't throw exception - email failure shouldn't prevent status update
         }
 

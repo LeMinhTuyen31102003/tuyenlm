@@ -1,6 +1,6 @@
 package example.ecommerce.tuyenlm.dto.response;
 
-import example.ecommerce.tuyenlm.entity.OrderStatus;
+import example.ecommerce.tuyenlm.enums.OrderStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,4 +22,3 @@ public class CheckoutResponse {
     private OrderStatus status;
     private LocalDateTime reservationExpiresAt;
 }
-

@@ -43,7 +43,7 @@ public class EmailServiceImpl implements IEmailService {
 
             helper.setFrom(fromEmail, senderName);
             helper.setTo(order.getCustomerEmail());
-            helper.setSubject("✅ Đơn hàng " + order.getOrderNumber() + " đã được tạo thành công!");
+            helper.setSubject("Đơn hàng " + order.getOrderNumber() + " đã được tạo thành công!");
 
             String htmlContent = buildOrderConfirmationEmailHtml(order);
             helper.setText(htmlContent, true);
@@ -61,43 +61,70 @@ public class EmailServiceImpl implements IEmailService {
 
     @Override
     public void sendOrderStatusUpdateEmail(Order order) {
+        log.info("[EMAIL] Starting to send status update email for order: {} - status: {}, customer: {}",
+                order.getOrderNumber(), order.getStatus(), order.getCustomerEmail());
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setFrom(fromEmail, senderName);
             helper.setTo(order.getCustomerEmail());
-            helper.setSubject(
-                    "🔔 Cập nhật đơn hàng " + order.getOrderNumber() + " - " + getStatusText(order.getStatus().name()));
+            String subject = "Cập nhật đơn hàng " + order.getOrderNumber() + " - "
+                    + getStatusText(order.getStatus().name());
+            helper.setSubject(subject);
 
+            log.info("[EMAIL] Building HTML content for order: {}", order.getOrderNumber());
             String htmlContent = buildOrderStatusUpdateEmailHtml(order);
             helper.setText(htmlContent, true);
 
+            log.info("[EMAIL] Sending email to: {} via mailSender.send()", order.getCustomerEmail());
             mailSender.send(message);
-            log.info("Order status update email sent to: {} for order: {} - status: {}",
-                    order.getCustomerEmail(), order.getOrderNumber(), order.getStatus());
+            log.info("[EMAIL] SUCCESS - Status update email sent to: {} for order: {}",
+                    order.getCustomerEmail(), order.getOrderNumber());
 
         } catch (MessagingException e) {
-            log.error("Failed to send status update email for order: {}", order.getOrderNumber(), e);
+            log.error("[EMAIL] FAILED - MessagingException for order: {} - Message: {}",
+                    order.getOrderNumber(), e.getMessage(), e);
+            throw new RuntimeException("Failed to send status update email: " + e.getMessage(), e);
         } catch (Exception e) {
-            log.error("Unexpected error sending status update email for order: {}", order.getOrderNumber(), e);
+            log.error("[EMAIL] FAILED - Unexpected error for order: {} - Message: {}",
+                    order.getOrderNumber(), e.getMessage(), e);
+            throw new RuntimeException("Failed to send status update email: " + e.getMessage(), e);
         }
     }
 
     private String buildOrderConfirmationEmailHtml(Order order) {
-        String trackingUrl = frontendUrl + "/track/" + order.getTrackingToken();
+        String trackingUrl = frontendUrl + "/api/orders/track/" + order.getTrackingToken();
 
         StringBuilder itemsHtml = new StringBuilder();
-        for (OrderItem item : order.getItems()) {
-            itemsHtml.append(String.format(
-                    "<tr>" +
-                            "<td style='padding: 12px; border-bottom: 1px solid #eee;'>%s</td>" +
-                            "<td style='padding: 12px; border-bottom: 1px solid #eee; text-align: center;'>x%d</td>" +
-                            "<td style='padding: 12px; border-bottom: 1px solid #eee; text-align: right;'>%s</td>" +
-                            "</tr>",
-                    item.getNameSnapshot(),
-                    item.getQuantity(),
-                    currencyFormat.format(item.getPriceSnapshot())));
+
+        log.info("Building email for order: {}, items count: {}", order.getOrderNumber(),
+                order.getItems() != null ? order.getItems().size() : 0);
+
+        if (order.getItems() == null || order.getItems().isEmpty()) {
+            log.warn("Order {} has no items!", order.getOrderNumber());
+            itemsHtml.append(
+                    "<tr><td colspan='3' style='padding: 12px; text-align: center; color: #999;'>Không có sản phẩm</td></tr>");
+        } else {
+            for (OrderItem item : order.getItems()) {
+                String productName = item.getNameSnapshot() != null && !item.getNameSnapshot().trim().isEmpty()
+                        ? item.getNameSnapshot()
+                        : "Sản phẩm";
+
+                log.debug("Adding item to email: {}, qty: {}, price: {}",
+                        productName, item.getQuantity(), item.getPriceSnapshot());
+
+                itemsHtml.append(String.format(
+                        "<tr>" +
+                                "<td style='padding: 12px; border-bottom: 1px solid #eee;'>%s</td>" +
+                                "<td style='padding: 12px; border-bottom: 1px solid #eee; text-align: center;'>x%d</td>"
+                                +
+                                "<td style='padding: 12px; border-bottom: 1px solid #eee; text-align: right;'>%s</td>" +
+                                "</tr>",
+                        productName,
+                        item.getQuantity(),
+                        currencyFormat.format(item.getPriceSnapshot())));
+            }
         }
 
         return String.format(
@@ -113,7 +140,7 @@ public class EmailServiceImpl implements IEmailService {
 
                                 <!-- Header -->
                                 <div style="background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); padding: 30px; text-align: center;">
-                                    <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Cảm ơn bạn đã mua hàng!</h1>
+                                    <h1 style="color: white; margin: 0; font-size: 28px;">Cảm ơn bạn đã mua hàng!</h1>
                                 </div>
 
                                 <!-- Content -->
@@ -176,15 +203,15 @@ public class EmailServiceImpl implements IEmailService {
 
                                     <!-- Shipping Address -->
                                     <div style="background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin: 20px 0;">
-                                        <h4 style="color: #333; margin: 0 0 10px 0; font-size: 14px;">📍 Địa chỉ giao hàng:</h4>
+                                        <h4 style="color: #333; margin: 0 0 10px 0; font-size: 14px;">Địa chỉ giao hàng:</h4>
                                         <p style="margin: 0; color: #666; font-size: 14px;">%s</p>
-                                        <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">📞 %s</p>
+                                        <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">%s</p>
                                     </div>
 
                                     <!-- Tracking Button -->
                                     <div style="text-align: center; margin: 30px 0;">
                                         <a href="%s" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; text-decoration: none; padding: 15px 40px; border-radius: 6px; font-weight: bold; font-size: 16px;">
-                                            🔍 Theo dõi đơn hàng
+                                            Theo dõi đơn hàng
                                         </a>
                                     </div>
 
@@ -195,7 +222,7 @@ public class EmailServiceImpl implements IEmailService {
 
                                     <div style="background-color: #e3f2fd; padding: 15px; border-radius: 6px; border-left: 4px solid #2196f3; margin-top: 20px;">
                                         <p style="margin: 0; font-size: 14px; color: #1976d2;">
-                                            💡 <strong>Lưu ý:</strong> Bạn có thể theo dõi trạng thái đơn hàng bất cứ lúc nào bằng cách click vào link trên.
+                                            <strong>Lưu ý:</strong> Bạn có thể theo dõi trạng thái đơn hàng bất cứ lúc nào bằng cách click vào link trên.
                                             Không cần đăng nhập hay tạo tài khoản!
                                         </p>
                                     </div>
@@ -204,7 +231,7 @@ public class EmailServiceImpl implements IEmailService {
                                 <!-- Footer -->
                                 <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #eee;">
                                     <p style="margin: 0; font-size: 14px; color: #666;">
-                                        Cảm ơn bạn đã tin tưởng <strong>%s</strong>! 🙏
+                                        Cảm ơn bạn đã tin tưởng <strong>%s</strong>!
                                     </p>
                                     <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">
                                         Email này được gửi tự động, vui lòng không trả lời.
@@ -231,9 +258,8 @@ public class EmailServiceImpl implements IEmailService {
     }
 
     private String buildOrderStatusUpdateEmailHtml(Order order) {
-        String trackingUrl = frontendUrl + "/track/" + order.getTrackingToken();
+        String trackingUrl = frontendUrl + "/api/orders/track/" + order.getTrackingToken();
         String statusColor = getStatusColor(order.getStatus().name());
-        String statusIcon = getStatusIcon(order.getStatus().name());
 
         return String.format(
                 """
@@ -248,7 +274,7 @@ public class EmailServiceImpl implements IEmailService {
 
                                 <!-- Header -->
                                 <div style="background: linear-gradient(135deg, %s 0%%, %s 100%%); padding: 30px; text-align: center;">
-                                    <h1 style="color: white; margin: 0; font-size: 28px;">%s Cập nhật đơn hàng</h1>
+                                    <h1 style="color: white; margin: 0; font-size: 28px;">Cập nhật đơn hàng</h1>
                                 </div>
 
                                 <!-- Content -->
@@ -263,8 +289,7 @@ public class EmailServiceImpl implements IEmailService {
 
                                     <!-- Status Update Box -->
                                     <div style="background: linear-gradient(135deg, %s 0%%, %s 100%%); padding: 25px; border-radius: 8px; text-align: center; margin: 25px 0;">
-                                        <p style="color: white; font-size: 48px; margin: 0;">%s</p>
-                                        <h2 style="color: white; margin: 10px 0 0 0; font-size: 24px;">%s</h2>
+                                        <h2 style="color: white; margin: 0; font-size: 24px;">%s</h2>
                                     </div>
 
                                     <p style="font-size: 14px; color: #666; margin: 20px 0;">
@@ -274,7 +299,7 @@ public class EmailServiceImpl implements IEmailService {
                                     <!-- Tracking Button -->
                                     <div style="text-align: center; margin: 30px 0;">
                                         <a href="%s" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; text-decoration: none; padding: 15px 40px; border-radius: 6px; font-weight: bold; font-size: 16px;">
-                                            🔍 Xem chi tiết đơn hàng
+                                            Xem chi tiết đơn hàng
                                         </a>
                                     </div>
                                 </div>
@@ -282,7 +307,7 @@ public class EmailServiceImpl implements IEmailService {
                                 <!-- Footer -->
                                 <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #eee;">
                                     <p style="margin: 0; font-size: 14px; color: #666;">
-                                        Cảm ơn bạn đã tin tưởng <strong>%s</strong>! 🙏
+                                        Cảm ơn bạn đã tin tưởng <strong>%s</strong>!
                                     </p>
                                     <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">
                                         Email này được gửi tự động, vui lòng không trả lời.
@@ -294,11 +319,9 @@ public class EmailServiceImpl implements IEmailService {
                         </html>
                         """,
                 statusColor, statusColor,
-                statusIcon,
                 order.getCustomerName(),
                 order.getOrderNumber(),
                 statusColor, statusColor,
-                statusIcon,
                 getStatusText(order.getStatus().name()),
                 getStatusMessage(order.getStatus().name()),
                 trackingUrl,
@@ -307,8 +330,8 @@ public class EmailServiceImpl implements IEmailService {
 
     private String getPaymentMethodText(String method) {
         return switch (method) {
-            case "COD" -> "💵 COD (Thanh toán khi nhận hàng)";
-            case "BANK_TRANSFER" -> "🏦 Chuyển khoản";
+            case "COD" -> "COD (Thanh toán khi nhận hàng)";
+            case "BANK_TRANSFER" -> "Chuyển khoản";
             default -> method;
         };
     }
@@ -339,19 +362,6 @@ public class EmailServiceImpl implements IEmailService {
         };
     }
 
-    private String getStatusIcon(String status) {
-        return switch (status) {
-            case "PENDING" -> "⏳";
-            case "PAID" -> "✅";
-            case "CONFIRMED" -> "✅";
-            case "PROCESSING" -> "📦";
-            case "SHIPPING" -> "🚚";
-            case "DELIVERED" -> "🎉";
-            case "CANCELLED" -> "❌";
-            default -> "🔔";
-        };
-    }
-
     private String getStatusMessage(String status) {
         return switch (status) {
             case "PENDING" -> "Đơn hàng của bạn đang chờ được xác nhận. Chúng tôi sẽ liên hệ với bạn sớm nhất!";
@@ -359,7 +369,7 @@ public class EmailServiceImpl implements IEmailService {
             case "CONFIRMED" -> "Đơn hàng đã được xác nhận thành công! Chúng tôi đang chuẩn bị hàng cho bạn.";
             case "PROCESSING" -> "Đơn hàng đang được đóng gói cẩn thận. Sẽ sớm được giao đến bạn!";
             case "SHIPPING" -> "Đơn hàng đang trên đường giao đến bạn! Vui lòng để ý điện thoại để nhận hàng.";
-            case "DELIVERED" -> "Đơn hàng đã được giao thành công! Cảm ơn bạn đã mua hàng. Hẹn gặp lại! 🎉";
+            case "DELIVERED" -> "Đơn hàng đã được giao thành công! Cảm ơn bạn đã mua hàng. Hẹn gặp lại!";
             case "CANCELLED" -> "Đơn hàng đã bị hủy. Nếu có thắc mắc, vui lòng liên hệ với chúng tôi.";
             default -> "Trạng thái đơn hàng đã được cập nhật.";
         };

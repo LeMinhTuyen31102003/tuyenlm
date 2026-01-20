@@ -1,7 +1,7 @@
 package example.ecommerce.tuyenlm.service.inter;
 
 import example.ecommerce.tuyenlm.dto.response.OrderResponse;
-import example.ecommerce.tuyenlm.entity.OrderStatus;
+import example.ecommerce.tuyenlm.enums.OrderStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -15,8 +15,6 @@ public interface IOrderService {
     Page<OrderResponse> getOrders(OrderStatus status, String keyword,
             LocalDateTime fromDate, LocalDateTime toDate,
             Pageable pageable);
-
-    Page<OrderResponse> getOrdersByEmail(String email, Pageable pageable);
 
     OrderResponse updateOrderStatus(Long orderId, OrderStatus newStatus, String note);
 }

@@ -39,14 +39,16 @@ public class SecurityConfig {
                                 "/api/products/**", // Catalog
                                 "/api/cart/**", // Shopping cart (dùng sessionId)
                                 "/api/checkout", // Checkout (không cần login)
-                                "/api/orders/track/**" // Order tracking (dùng token từ email)
+                                "/api/orders/track/**", // Order tracking (dùng token từ email)
+                                "/v3/api-docs/**", // Swagger API docs
+                                "/swagger-ui/**", // Swagger UI
+                                "/swagger-ui.html" // Swagger UI HTML
                         ).permitAll()
 
                         // Admin endpoints - Cần login với role ADMIN
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         // User endpoints - Cần login (CUSTOMER hoặc ADMIN)
-                        .requestMatchers("/api/orders/my-orders").hasAnyRole("CUSTOMER", "ADMIN")
                         .requestMatchers("/api/user/**").hasAnyRole("CUSTOMER", "ADMIN")
 
                         // Tất cả request khác yêu cầu authentication

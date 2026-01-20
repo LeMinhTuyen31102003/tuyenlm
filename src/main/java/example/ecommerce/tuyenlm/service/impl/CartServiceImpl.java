@@ -7,7 +7,8 @@ import example.ecommerce.tuyenlm.dto.response.CartResponse;
 import example.ecommerce.tuyenlm.entity.Cart;
 import example.ecommerce.tuyenlm.entity.CartItem;
 import example.ecommerce.tuyenlm.entity.ProductVariant;
-import example.ecommerce.tuyenlm.entity.ReservationStatus;
+import example.ecommerce.tuyenlm.enums.ReservationStatus;
+import example.ecommerce.tuyenlm.exception.BadRequestException;
 import example.ecommerce.tuyenlm.exception.InsufficientStockException;
 import example.ecommerce.tuyenlm.exception.ResourceNotFoundException;
 import example.ecommerce.tuyenlm.mapping.CartMapper;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -37,15 +39,29 @@ public class CartServiceImpl implements ICartService {
     @Override
     @Transactional
     public CartItemResponse addItemToCart(AddCartItemRequest request) {
-        log.info("Adding item to cart: sessionId={}, variantId={}, quantity={}",
-                request.getSessionId(), request.getVariantId(), request.getQuantity());
+        // ✅ AUTO GENERATE sessionId nếu client không gửi
+        String sessionId = request.getSessionId();
+        boolean isNewSession = false;
+
+        if (sessionId == null || sessionId.trim().isEmpty()) {
+            sessionId = UUID.randomUUID().toString();
+            isNewSession = true;
+            log.info("🆕 Generated new sessionId: {}", sessionId);
+        } else {
+            log.info("♻️ Reusing existing sessionId: {}", sessionId);
+        }
+
+        // Make sessionId final for lambda usage
+        final String finalSessionId = sessionId;
 
         // Find or create cart
-        Cart cart = cartRepository.findBySessionId(request.getSessionId())
+        Cart cart = cartRepository.findBySessionId(finalSessionId)
                 .orElseGet(() -> {
                     Cart newCart = new Cart();
-                    newCart.setSessionId(request.getSessionId());
-                    return cartRepository.save(newCart);
+                    newCart.setSessionId(finalSessionId);
+                    Cart savedCart = cartRepository.save(newCart);
+                    log.info("🛒 Created new cart with sessionId: {}", finalSessionId);
+                    return savedCart;
                 });
 
         // Find variant
@@ -74,9 +90,17 @@ public class CartServiceImpl implements ICartService {
         }
 
         cartItem = cartItemRepository.save(cartItem);
-        log.info("Cart item added/updated: id={}, quantity={}", cartItem.getId(), cartItem.getQuantity());
+        log.info("📈 Cart item added/updated: id={}, quantity={}", cartItem.getId(), cartItem.getQuantity());
 
-        return cartMapper.toCartItemResponse(cartItem);
+        // Build response và LUÔN LUÔN trả về sessionId
+        CartItemResponse response = cartMapper.toCartItemResponse(cartItem);
+        response.setSessionId(finalSessionId); // ✅ Client nhận sessionId từ đây
+
+        if (isNewSession) {
+            log.info("✅ New session created and returned to client: {}", finalSessionId);
+        }
+
+        return response;
     }
 
     @Override
@@ -94,24 +118,38 @@ public class CartServiceImpl implements ICartService {
         CartItem cartItem = cartItemRepository.findById(itemId)
                 .orElseThrow(() -> new ResourceNotFoundException("CartItem", itemId));
 
+        // ✅ VALIDATE: Item có thuộc giỏ hàng của sessionId này không?
+        if (!cartItem.getCart().getSessionId().equals(request.getSessionId())) {
+            throw new BadRequestException("This cart item does not belong to your session");
+        }
+
         // Validate stock availability
         validateStockAvailability(cartItem.getVariant(), request.getQuantity());
 
         cartItem.setQuantity(request.getQuantity());
         cartItem = cartItemRepository.save(cartItem);
 
-        log.info("Cart item updated: id={}, newQuantity={}", itemId, request.getQuantity());
-        return cartMapper.toCartItemResponse(cartItem);
+        log.info("🔄 Cart item updated: id={}, newQuantity={}, sessionId={}", itemId, request.getQuantity(),
+                request.getSessionId());
+
+        CartItemResponse response = cartMapper.toCartItemResponse(cartItem);
+        response.setSessionId(cartItem.getCart().getSessionId());
+        return response;
     }
 
     @Override
     @Transactional
-    public void removeCartItem(Long itemId) {
-        if (!cartItemRepository.existsById(itemId)) {
-            throw new ResourceNotFoundException("CartItem", itemId);
+    public void removeCartItem(Long itemId, String sessionId) {
+        CartItem cartItem = cartItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("CartItem", itemId));
+
+        // ✅ VALIDATE: Item có thuộc giỏ hàng của sessionId này không?
+        if (!cartItem.getCart().getSessionId().equals(sessionId)) {
+            throw new BadRequestException("This cart item does not belong to your session");
         }
-        cartItemRepository.deleteById(itemId);
-        log.info("Cart item removed: id={}", itemId);
+
+        cartItemRepository.delete(cartItem);
+        log.info("🗑️ Cart item removed: id={}, sessionId={}", itemId, sessionId);
     }
 
     @Override
@@ -121,7 +159,7 @@ public class CartServiceImpl implements ICartService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cart", "sessionId", sessionId));
 
         cartItemRepository.deleteByCartId(cart.getId());
-        log.info("Cart cleared: sessionId={}", sessionId);
+        log.info("🧹 Cart cleared: sessionId={}", sessionId);
     }
 
     // Helper methods

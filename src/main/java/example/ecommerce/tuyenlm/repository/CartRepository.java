@@ -15,6 +15,6 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
 
     boolean existsBySessionId(String sessionId);
 
-    // Cleanup old carts (e.g., older than 30 days)
-    void deleteByCreatedAtBefore(LocalDateTime dateTime);
+    // ✅ Cleanup old carts (older than 7 days of inactivity)
+    void deleteByUpdatedAtBefore(LocalDateTime dateTime);
 }

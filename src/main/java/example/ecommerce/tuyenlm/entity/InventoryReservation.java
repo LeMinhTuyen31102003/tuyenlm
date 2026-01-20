@@ -2,6 +2,7 @@ package example.ecommerce.tuyenlm.entity;
 
 import java.time.LocalDateTime;
 
+import example.ecommerce.tuyenlm.enums.ReservationStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

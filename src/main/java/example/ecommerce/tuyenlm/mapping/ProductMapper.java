@@ -6,7 +6,7 @@ import example.ecommerce.tuyenlm.dto.response.VariantResponse;
 import example.ecommerce.tuyenlm.entity.Category;
 import example.ecommerce.tuyenlm.entity.Product;
 import example.ecommerce.tuyenlm.entity.ProductVariant;
-import example.ecommerce.tuyenlm.entity.ReservationStatus;
+import example.ecommerce.tuyenlm.enums.ReservationStatus;
 import example.ecommerce.tuyenlm.repository.InventoryReservationRepository;
 import org.mapstruct.*;
 import org.springframework.beans.factory.annotation.Autowired;

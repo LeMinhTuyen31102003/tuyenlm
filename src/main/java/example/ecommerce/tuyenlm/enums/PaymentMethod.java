@@ -1,4 +1,4 @@
-package example.ecommerce.tuyenlm.entity;
+package example.ecommerce.tuyenlm.enums;
 
 public enum PaymentMethod {
     COD, // Cash on Delivery

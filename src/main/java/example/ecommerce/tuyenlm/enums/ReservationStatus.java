@@ -1,4 +1,4 @@
-package example.ecommerce.tuyenlm.entity;
+package example.ecommerce.tuyenlm.enums;
 
 public enum ReservationStatus {
     ACTIVE, // Đang giữ hàng (trong thời gian checkout)

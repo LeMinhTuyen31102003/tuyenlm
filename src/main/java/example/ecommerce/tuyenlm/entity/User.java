@@ -8,6 +8,8 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+import example.ecommerce.tuyenlm.enums.UserRole;
+
 @Entity
 @Table(name = "users", indexes = {
         @Index(name = "idx_username", columnList = "username")
@@ -39,7 +41,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private UserRole role = UserRole.CUSTOMER;
+    private UserRole role;
 
     @Column(nullable = false)
     private boolean active = true;

@@ -1,27 +1,31 @@
 package example.ecommerce.tuyenlm.controller;
 
 import example.ecommerce.tuyenlm.dto.request.LoginRequest;
-import example.ecommerce.tuyenlm.dto.request.RegisterRequest;
 import example.ecommerce.tuyenlm.dto.response.LoginResponse;
 import example.ecommerce.tuyenlm.entity.User;
-import example.ecommerce.tuyenlm.entity.UserRole;
 import example.ecommerce.tuyenlm.repository.UserRepository;
 import example.ecommerce.tuyenlm.security.JwtTokenProvider;
+import example.ecommerce.tuyenlm.security.TokenBlacklistService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+@Tag(name = "Authentication", description = "API đăng nhập/đăng xuất cho Admin và Warehouse")
 @Slf4j
 @RestController
 @RequestMapping("/api/auth")
@@ -31,41 +35,9 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider tokenProvider;
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final TokenBlacklistService tokenBlacklistService;
 
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
-        // Check if username already exists
-        if (userRepository.existsByUsername(request.getUsername())) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Username already exists");
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
-        }
-
-        // Create new customer user
-        User user = new User();
-        user.setUsername(request.getUsername());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setFullName(request.getFullName());
-        user.setEmail(request.getEmail());
-        user.setRole(UserRole.CUSTOMER);
-        user.setActive(true);
-
-        userRepository.save(user);
-        log.info("New customer registered: {}", user.getUsername());
-
-        // Auto login after registration
-        String token = tokenProvider.generateToken(user.getUsername());
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(LoginResponse.builder()
-                .accessToken(token)
-                .tokenType("Bearer")
-                .username(user.getUsername())
-                .fullName(user.getFullName())
-                .role(user.getRole().name())
-                .build());
-    }
-
+    @Operation(summary = "Đăng nhập Admin", description = "Đăng nhập để lấy JWT token. Tài khoản test: admin/admin123 hoặc warehouse/warehouse123")
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
@@ -90,13 +62,43 @@ public class AuthController {
                 .build());
     }
 
+    @Operation(summary = "Đăng xuất", description = "Đăng xuất và thêm token vào blacklist", security = @SecurityRequirement(name = "Bearer Authentication"))
     @PostMapping("/logout")
-    public ResponseEntity<Map<String, String>> logout() {
+    public ResponseEntity<Map<String, String>> logout(HttpServletRequest request) {
+        try {
+            // Extract token from request
+            String token = getJwtFromRequest(request);
+
+            if (StringUtils.hasText(token)) {
+                // Get token expiry time
+                LocalDateTime expiryTime = tokenProvider.getExpiryTime(token);
+
+                // Add token to blacklist
+                tokenBlacklistService.blacklistToken(token, expiryTime);
+
+                log.info("Token blacklisted successfully");
+            }
+        } catch (Exception e) {
+            log.error("Error during logout: {}", e.getMessage());
+        }
+
+        // Clear security context
         SecurityContextHolder.clearContext();
 
         Map<String, String> response = new HashMap<>();
         response.put("message", "Logged out successfully");
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Extract JWT token from Authorization header
+     */
+    private String getJwtFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
     }
 }

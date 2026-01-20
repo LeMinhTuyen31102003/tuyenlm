@@ -12,7 +12,7 @@ public interface ICartService {
 
     CartItemResponse updateCartItem(Long itemId, UpdateCartItemRequest request);
 
-    void removeCartItem(Long itemId);
+    void removeCartItem(Long itemId, String sessionId);
 
     void clearCart(String sessionId);
 }

@@ -1,6 +1,6 @@
 package example.ecommerce.tuyenlm.dto.request;
 
-import example.ecommerce.tuyenlm.entity.PaymentMethod;
+import example.ecommerce.tuyenlm.enums.PaymentMethod;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
