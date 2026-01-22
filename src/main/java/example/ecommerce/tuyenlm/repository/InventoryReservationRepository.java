@@ -43,4 +43,11 @@ public interface InventoryReservationRepository extends JpaRepository<InventoryR
         @Query("SELECT r FROM InventoryReservation r " +
                         "WHERE r.variant.id = :variantId AND r.status = 'ACTIVE'")
         List<InventoryReservation> findActiveByVariantId(@Param("variantId") Long variantId);
+
+        // Delete old reservations (for cleanup job) - older than specified days
+        @Modifying
+        @Query("DELETE FROM InventoryReservation r " +
+                        "WHERE r.status IN ('EXPIRED', 'COMMITTED') " +
+                        "AND r.reservedAt < :cutoffDate")
+        int deleteOldReservations(@Param("cutoffDate") LocalDateTime cutoffDate);
 }

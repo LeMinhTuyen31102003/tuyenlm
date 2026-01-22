@@ -27,6 +27,12 @@ public class InventoryReservationServiceImpl implements IInventoryReservationSer
     @Override
     @Transactional
     public InventoryReservation createReservation(ProductVariant variant, int quantity, int expirationMinutes) {
+        // TRỪ STOCK NGAY khi tạo reservation
+        variant.setStockQuantity(variant.getStockQuantity() - quantity);
+        variantRepository.save(variant);
+        log.info("Reduced stock for variant {}: -{}, remaining: {}",
+                variant.getSku(), quantity, variant.getStockQuantity());
+
         InventoryReservation reservation = new InventoryReservation();
         reservation.setVariant(variant);
         reservation.setQuantity(quantity);
@@ -51,13 +57,9 @@ public class InventoryReservationServiceImpl implements IInventoryReservationSer
             reservation.setStatus(ReservationStatus.COMMITTED);
             reservationRepository.save(reservation);
 
-            // Reduce stock quantity
-            ProductVariant variant = reservation.getVariant();
-            variant.setStockQuantity(variant.getStockQuantity() - reservation.getQuantity());
-            variantRepository.save(variant);
-
-            log.info("Committed reservation: id={}, reduced stock for variant {} by {}",
-                    reservation.getId(), variant.getSku(), reservation.getQuantity());
+            // Stock đã được trừ khi createReservation, không trừ lại nữa
+            log.info("Committed reservation: id={}, variant {} (stock already reduced)",
+                    reservation.getId(), reservation.getVariant().getSku());
         }
     }
 
@@ -78,12 +80,15 @@ public class InventoryReservationServiceImpl implements IInventoryReservationSer
         log.info("Releasing {} reservations", reservations.size());
 
         for (InventoryReservation reservation : reservations) {
-            if (reservation.getStatus() == ReservationStatus.COMMITTED) {
+            // Hoàn stock cho cả ACTIVE và COMMITTED reservations
+            if (reservation.getStatus() == ReservationStatus.ACTIVE ||
+                    reservation.getStatus() == ReservationStatus.COMMITTED) {
                 // Return stock
                 ProductVariant variant = reservation.getVariant();
                 variant.setStockQuantity(variant.getStockQuantity() + reservation.getQuantity());
                 variantRepository.save(variant);
-                log.info("Returned stock for variant {}: +{}", variant.getSku(), reservation.getQuantity());
+                log.info("Returned stock for variant {}: +{}, new total: {}",
+                        variant.getSku(), reservation.getQuantity(), variant.getStockQuantity());
             }
 
             reservation.setStatus(ReservationStatus.EXPIRED);
@@ -97,10 +102,39 @@ public class InventoryReservationServiceImpl implements IInventoryReservationSer
     @Transactional
     public void autoExpireReservations() {
         LocalDateTime now = LocalDateTime.now();
-        int expiredCount = reservationRepository.expireReservations(now);
 
-        if (expiredCount > 0) {
-            log.info("Auto-expired {} reservations at {}", expiredCount, now);
+        // Tìm các reservation đã hết hạn
+        List<InventoryReservation> expiredReservations = reservationRepository.findExpiredReservations(now);
+
+        if (!expiredReservations.isEmpty()) {
+            // Hoàn stock cho các reservation đã hết hạn
+            for (InventoryReservation reservation : expiredReservations) {
+                ProductVariant variant = reservation.getVariant();
+                variant.setStockQuantity(variant.getStockQuantity() + reservation.getQuantity());
+                variantRepository.save(variant);
+
+                reservation.setStatus(ReservationStatus.EXPIRED);
+                reservationRepository.save(reservation);
+
+                log.info("Auto-expired reservation id={}, returned stock for variant {}: +{}",
+                        reservation.getId(), variant.getSku(), reservation.getQuantity());
+            }
+
+            log.info("Auto-expired {} reservations at {}", expiredReservations.size(), now);
+        }
+    }
+
+    // Scheduled job to cleanup old reservations - chạy mỗi ngày lúc 2h sáng
+    @Override
+    @Scheduled(cron = "0 0 2 * * *") // 2:00 AM mỗi ngày
+    @Transactional
+    public void cleanupOldReservations() {
+        // Xóa các reservation EXPIRED và COMMITTED cũ hơn 30 ngày
+        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(30);
+        int deletedCount = reservationRepository.deleteOldReservations(cutoffDate);
+
+        if (deletedCount > 0) {
+            log.info("Cleaned up {} old reservations (older than {})", deletedCount, cutoffDate);
         }
     }
 

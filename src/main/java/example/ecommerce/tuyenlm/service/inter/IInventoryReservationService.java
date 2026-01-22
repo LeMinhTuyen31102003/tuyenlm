@@ -17,5 +17,7 @@ public interface IInventoryReservationService {
 
     void autoExpireReservations();
 
+    void cleanupOldReservations();
+
     int getAvailableStock(Long variantId);
 }

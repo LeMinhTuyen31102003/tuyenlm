@@ -38,7 +38,7 @@ public class SecurityConfig {
                                 "/api/auth/**", // Login/logout/register
                                 "/api/products/**", // Catalog
                                 "/api/cart/**", // Shopping cart (dùng sessionId)
-                                "/api/checkout", // Checkout (không cần login)
+                                "/api/checkout/**", // Checkout (không cần login) - bao gồm lock/unlock
                                 "/api/orders/track/**", // Order tracking (dùng token từ email)
                                 "/v3/api-docs/**", // Swagger API docs
                                 "/swagger-ui/**", // Swagger UI
