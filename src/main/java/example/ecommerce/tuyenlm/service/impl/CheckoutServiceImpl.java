@@ -56,9 +56,10 @@ public class CheckoutServiceImpl implements ICheckoutService {
     /**
      * Lock inventory - trừ stock ngay khi người dùng bấm "Thanh toán"
      * Tạo reservation và giữ hàng trong 15 phút
+     * Dùng REPEATABLE_READ + Pessimistic Lock để tăng performance
      */
     @Override
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     public LockInventoryResponse lockInventory(LockInventoryRequest request) {
         log.info("Locking inventory for sessionId: {}", request.getSessionId());
 
@@ -76,29 +77,13 @@ public class CheckoutServiceImpl implements ICheckoutService {
         BigDecimal subtotal = BigDecimal.ZERO;
 
         for (CartItem cartItem : cartItems) {
-            // Lock variant to prevent race condition
-            ProductVariant variant = variantRepository.findByIdWithLock(cartItem.getVariant().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("ProductVariant", cartItem.getVariant().getId()));
-
-            // Calculate available stock
-            int reservedStock = reservationRepository.sumQuantityByVariantAndStatus(
-                    variant.getId(), ReservationStatus.ACTIVE);
-            int availableStock = variant.getStockQuantity() - reservedStock;
-
-            // Validate
-            if (availableStock < cartItem.getQuantity()) {
-                throw new InsufficientStockException(
-                        String.format("Variant '%s' is out of stock", variant.getSku()),
-                        Map.of(
-                                "variantId", variant.getId(),
-                                "sku", variant.getSku(),
-                                "requested", cartItem.getQuantity(),
-                                "available", availableStock));
-            }
-
-            // Create reservation - TRỪ STOCK NGAY
-            InventoryReservation reservation = reservationService.createReservation(
-                    variant, cartItem.getQuantity(), RESERVATION_EXPIRATION_MINUTES);
+            // Dùng createReservationWithLock để FIX RACE CONDITION
+            // Lock variant → validate → trừ stock → tạo reservation (tất cả trong 1
+            // transaction với lock)
+            InventoryReservation reservation = reservationService.createReservationWithLock(
+                    cartItem.getVariant().getId(),
+                    cartItem.getQuantity(),
+                    RESERVATION_EXPIRATION_MINUTES);
             reservations.add(reservation);
 
             subtotal = subtotal.add(cartItem.getPriceSnapshot().multiply(BigDecimal.valueOf(cartItem.getQuantity())));
@@ -156,9 +141,10 @@ public class CheckoutServiceImpl implements ICheckoutService {
     /**
      * Process checkout - tạo đơn hàng khi người dùng submit form
      * Sử dụng các reservation đã được tạo từ lockInventory
+     * Dùng REPEATABLE_READ để đảm bảo data consistency
      */
     @Override
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     public CheckoutResponse processCheckout(CheckoutRequest request, List<Long> reservationIds) {
         log.info("Processing checkout for sessionId: {} with reservationIds: {}", request.getSessionId(),
                 reservationIds);

@@ -9,6 +9,11 @@ import java.util.List;
 public interface IInventoryReservationService {
     InventoryReservation createReservation(ProductVariant variant, int quantity, int expirationMinutes);
 
+    /**
+     * Create reservation with lock - để tránh race condition khi lock last item
+     */
+    InventoryReservation createReservationWithLock(Long variantId, int quantity, int expirationMinutes);
+
     void commitReservations(Order order, List<InventoryReservation> reservations);
 
     void expireReservations(List<InventoryReservation> reservations);

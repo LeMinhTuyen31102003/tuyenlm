@@ -4,6 +4,8 @@ import example.ecommerce.tuyenlm.entity.InventoryReservation;
 import example.ecommerce.tuyenlm.entity.Order;
 import example.ecommerce.tuyenlm.entity.ProductVariant;
 import example.ecommerce.tuyenlm.enums.ReservationStatus;
+import example.ecommerce.tuyenlm.exception.InsufficientStockException;
+import example.ecommerce.tuyenlm.exception.ResourceNotFoundException;
 import example.ecommerce.tuyenlm.repository.InventoryReservationRepository;
 import example.ecommerce.tuyenlm.repository.ProductVariantRepository;
 import example.ecommerce.tuyenlm.service.inter.IInventoryReservationService;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -44,6 +47,55 @@ public class InventoryReservationServiceImpl implements IInventoryReservationSer
         log.info("Created inventory reservation: id={}, variantId={}, quantity={}, expiresAt={}",
                 reservation.getId(), variant.getId(), quantity, reservation.getExpiresAt());
 
+        return reservation;
+    }
+
+    /**
+     * Create reservation with pessimistic lock - FIX LAST ITEM RACE CONDITION
+     * Lock variant từ đầu đến cuối để tránh 2 user cùng mua item cuối cùng
+     */
+    @Override
+    @Transactional
+    public InventoryReservation createReservationWithLock(Long variantId, int quantity, int expirationMinutes) {
+        // Lock variant NGAY từ đầu - giữ lock đến hết transaction
+        ProductVariant variant = variantRepository.findByIdWithLock(variantId)
+                .orElseThrow(() -> new ResourceNotFoundException("ProductVariant", variantId));
+
+        // Calculate available stock (trong khi đang giữ lock)
+        int reservedStock = reservationRepository.sumQuantityByVariantAndStatus(
+                variantId, ReservationStatus.ACTIVE);
+        int availableStock = variant.getStockQuantity() - reservedStock;
+
+        // Validate (trong khi đang giữ lock)
+        if (availableStock < quantity) {
+            throw new InsufficientStockException(
+                    String.format("Variant '%s' is out of stock", variant.getSku()),
+                    Map.of(
+                            "variantId", variantId,
+                            "sku", variant.getSku(),
+                            "requested", quantity,
+                            "available", availableStock));
+        }
+
+        // TRỪ STOCK NGAY (vẫn đang giữ lock)
+        variant.setStockQuantity(variant.getStockQuantity() - quantity);
+        variantRepository.save(variant);
+        log.info("Reduced stock for variant {}: -{}, remaining: {}",
+                variant.getSku(), quantity, variant.getStockQuantity());
+
+        // Tạo reservation (vẫn đang giữ lock)
+        InventoryReservation reservation = new InventoryReservation();
+        reservation.setVariant(variant);
+        reservation.setQuantity(quantity);
+        reservation.setReservedAt(LocalDateTime.now());
+        reservation.setExpiresAt(LocalDateTime.now().plusMinutes(expirationMinutes));
+        reservation.setStatus(ReservationStatus.ACTIVE);
+
+        reservation = reservationRepository.save(reservation);
+        log.info("Created inventory reservation with lock: id={}, variantId={}, quantity={}, expiresAt={}",
+                reservation.getId(), variant.getId(), quantity, reservation.getExpiresAt());
+
+        // Lock chỉ được release khi transaction commit
         return reservation;
     }
 
