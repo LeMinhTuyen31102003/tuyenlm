@@ -56,10 +56,11 @@ public class CheckoutServiceImpl implements ICheckoutService {
     /**
      * Lock inventory - trừ stock ngay khi người dùng bấm "Thanh toán"
      * Tạo reservation và giữ hàng trong 15 phút
-     * Dùng REPEATABLE_READ + Pessimistic Lock để tăng performance
+     * Dùng READ_COMMITTED + Pessimistic Lock để tăng concurrency
+     * Retry mechanism để xử lý lock contention
      */
     @Override
-    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public LockInventoryResponse lockInventory(LockInventoryRequest request) {
         log.info("Locking inventory for sessionId: {}", request.getSessionId());
 
@@ -141,10 +142,10 @@ public class CheckoutServiceImpl implements ICheckoutService {
     /**
      * Process checkout - tạo đơn hàng khi người dùng submit form
      * Sử dụng các reservation đã được tạo từ lockInventory
-     * Dùng REPEATABLE_READ để đảm bảo data consistency
+     * Dùng READ_COMMITTED để tăng concurrency
      */
     @Override
-    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public CheckoutResponse processCheckout(CheckoutRequest request, List<Long> reservationIds) {
         log.info("Processing checkout for sessionId: {} with reservationIds: {}", request.getSessionId(),
                 reservationIds);
